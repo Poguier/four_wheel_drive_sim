@@ -1,0 +1,112 @@
+<mujoco model="four_wheel_car">
+  <!-- 单位: m, kg, s, rad
+       前轮: 直径266mm (R=0.133), 可转向 + 驱动
+       后轮: 直径340mm (R=0.170), 仅驱动
+       轴距1200mm, 轮距780mm
+       车体坐标: x向前, y向左, z向上 -->
+  <compiler angle="degree" inertiafromgeom="true"/>
+  <option timestep="0.002" integrator="implicitfast" cone="elliptic" impratio="10"/>
+
+  <default>
+    <joint damping="0.01"/>
+    <default class="wheel">
+      <geom type="cylinder" friction="1.0 0.01 0.001" condim="6" solref="0.01 1" solimp="0.95 0.99 0.001"/>
+    </default>
+    <default class="link">
+      <geom contype="0" conaffinity="0" rgba="0.3 0.3 0.3 1"/>
+    </default>
+    <default class="drive">
+      <motor gear="1" ctrllimited="true" ctrlrange="-60 60"/>
+    </default>
+    <default class="steer">
+      <position kp="200" kv="10" ctrlrange="-0.6 0.6" forcerange="-50 50"/>
+    </default>
+  </default>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.8 0.8 0.8" rgb2="0.6 0.6 0.6" width="512" height="512"/>
+    <material name="grid" texture="grid" texrepeat="10 10" texuniform="true" reflectance="0.1"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 4" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" type="plane" size="50 50 0.1" material="grid" friction="1.0 0.005 0.0001"/>
+
+    <!-- 地面参考标线 (无碰撞): 红色中心线 y=0 (车的初始行驶方向),
+         每 0.1m 一条纵向刻度线 (±0.5m), 每 1m 一条横向刻度 -->
+    <geom name="ref_center" type="box" size="25 0.006 0.0005" pos="20 0 0.0005" rgba="0.9 0.1 0.1 1" contype="0" conaffinity="0"/>
+    <replicate count="5" offset="0 0.1 0">
+      <geom name="ref_left" type="box" size="25 0.002 0.0005" pos="20 0.1 0.0005" rgba="0.15 0.15 0.15 1" contype="0" conaffinity="0"/>
+    </replicate>
+    <replicate count="5" offset="0 -0.1 0">
+      <geom name="ref_right" type="box" size="25 0.002 0.0005" pos="20 -0.1 0.0005" rgba="0.15 0.15 0.15 1" contype="0" conaffinity="0"/>
+    </replicate>
+    <replicate count="25" offset="1 0 0">
+      <geom name="ref_tick" type="box" size="0.004 0.5 0.0005" pos="0 0 0.0005" rgba="0.15 0.15 0.15 1" contype="0" conaffinity="0"/>
+    </replicate>
+
+    <body name="chassis" pos="0 0 0.25">
+      <freejoint name="root"/>
+      <geom name="chassis_box" type="box" size="0.7 0.2 0.05" mass="30" rgba="0.2 0.4 0.8 1"/>
+      <geom name="axle_front" class="link" type="box" size="0.02 0.39 0.015" pos="0.6 0 -0.117" mass="0.001"/>
+      <geom name="axle_rear" class="link" type="box" size="0.02 0.39 0.015" pos="-0.6 0 -0.08" mass="0.001"/>
+      <site name="imu" pos="0 0 0"/>
+
+      <!-- 前轮: 转向节(绕z转向) + 车轮(绕y驱动), 轴心高度 = 前轮半径 0.133 -->
+      <body name="fl_knuckle" pos="0.6 0.39 -0.117">
+        <joint name="fl_steer" axis="0 0 1" range="-35 35" damping="0.1"/>
+        <geom class="link" type="box" size="0.02 0.02 0.02" mass="0.5"/>
+        <body name="fl_wheel">
+          <joint name="fl_drive" axis="0 1 0"/>
+          <geom name="fl_tire" class="wheel" size="0.133 0.03" euler="90 0 0" mass="2" rgba="0.1 0.1 0.1 1"/>
+          <geom class="link" type="box" size="0.125 0.031 0.004" rgba="0.9 0.9 0.2 1" mass="0.001"/>
+        </body>
+      </body>
+      <body name="fr_knuckle" pos="0.6 -0.39 -0.117">
+        <joint name="fr_steer" axis="0 0 1" range="-35 35" damping="0.1"/>
+        <geom class="link" type="box" size="0.02 0.02 0.02" mass="0.5"/>
+        <body name="fr_wheel">
+          <joint name="fr_drive" axis="0 1 0"/>
+          <geom name="fr_tire" class="wheel" size="0.133 0.03" euler="90 0 0" mass="2" rgba="0.1 0.1 0.1 1"/>
+          <geom class="link" type="box" size="0.125 0.031 0.004" rgba="0.9 0.9 0.2 1" mass="0.001"/>
+        </body>
+      </body>
+
+      <!-- 后轮: 仅驱动, 轴心高度 = 后轮半径 0.170 -->
+      <body name="rl_wheel" pos="-0.6 0.39 -0.08">
+        <joint name="rl_drive" axis="0 1 0"/>
+        <geom name="rl_tire" class="wheel" size="0.170 0.04" euler="90 0 0" mass="3" rgba="0.1 0.1 0.1 1"/>
+        <geom class="link" type="box" size="0.16 0.041 0.004" rgba="0.9 0.9 0.2 1" mass="0.001"/>
+      </body>
+      <body name="rr_wheel" pos="-0.6 -0.39 -0.08">
+        <joint name="rr_drive" axis="0 1 0"/>
+        <geom name="rr_tire" class="wheel" size="0.170 0.04" euler="90 0 0" mass="3" rgba="0.1 0.1 0.1 1"/>
+        <geom class="link" type="box" size="0.16 0.041 0.004" rgba="0.9 0.9 0.2 1" mass="0.001"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <!-- 四个独立驱动电机: 力矩输入 (车轮侧 Nm), 由 motor.py 的电机模型 (电流环) 产生 -->
+    <motor name="fl_drive_motor" class="drive" joint="fl_drive"/>
+    <motor name="fr_drive_motor" class="drive" joint="fr_drive"/>
+    <motor name="rl_drive_motor" class="drive" joint="rl_drive"/>
+    <motor name="rr_drive_motor" class="drive" joint="rr_drive"/>
+    <!-- 两个独立转向电机 (位置控制, rad) -->
+    <position name="fl_steer_motor" class="steer" joint="fl_steer"/>
+    <position name="fr_steer_motor" class="steer" joint="fr_steer"/>
+  </actuator>
+
+  <sensor>
+    <jointpos name="fl_steer_pos" joint="fl_steer"/>
+    <jointpos name="fr_steer_pos" joint="fr_steer"/>
+    <jointvel name="fl_wheel_vel" joint="fl_drive"/>
+    <jointvel name="fr_wheel_vel" joint="fr_drive"/>
+    <jointvel name="rl_wheel_vel" joint="rl_drive"/>
+    <jointvel name="rr_wheel_vel" joint="rr_drive"/>
+    <framequat name="imu_quat" objtype="site" objname="imu"/>
+    <gyro name="imu_gyro" site="imu"/>
+    <accelerometer name="imu_acc" site="imu"/>
+    <framelinvel name="chassis_linvel" objtype="body" objname="chassis"/>
+  </sensor>
+</mujoco>
